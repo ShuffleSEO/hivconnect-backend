@@ -56,7 +56,7 @@ async function triggerFrontendRebuild(collection: string, operation: string, doc
 
     console.log(`   Response Status: ${response.status} ${response.statusText}`);
 
-    const responseData = await response.json();
+    const responseData = await response.json() as any;
     console.log(`   Response Data: ${JSON.stringify(responseData)}`);
 
     if (response.ok) {
