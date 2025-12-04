@@ -1,27 +1,27 @@
 /**
- * Log content changes for monitoring
+ * Trigger automatic frontend rebuild when content changes
  *
- * Automatic rebuilds will be handled via:
- * - Git push to main branch triggers Cloudflare Pages build
- * - GitHub Actions triggered by webhook from PayloadCMS
+ * When content is created, updated, or deleted in PayloadCMS,
+ * this hook triggers a Cloudflare Pages deployment via deploy hook.
  */
 
 import { CollectionAfterChangeHook, CollectionAfterDeleteHook, GlobalAfterChangeHook } from 'payload';
 
-// Track recent changes to avoid duplicate logs
+// Track recent changes to avoid duplicate rebuilds
 const recentChanges = new Map<string, number>();
-const LOG_COOLDOWN = 5000; // 5 second cooldown for duplicate logs
+const REBUILD_COOLDOWN = 10000; // 10 second cooldown to batch changes
 
 /**
- * Log content change (for monitoring)
+ * Trigger Cloudflare Pages rebuild
  */
-async function logContentChange(collection: string, operation: string, docId: string) {
+async function triggerFrontendRebuild(collection: string, operation: string, docId: string) {
   const changeKey = `${collection}-${docId}`;
   const now = Date.now();
   const lastChange = recentChanges.get(changeKey);
 
   // Skip if changed recently (within cooldown period)
-  if (lastChange && now - lastChange < LOG_COOLDOWN) {
+  if (lastChange && now - lastChange < REBUILD_COOLDOWN) {
+    console.log(`⏭️  Skipping rebuild for ${collection}:${docId} (cooldown active)`);
     return;
   }
 
@@ -34,12 +34,40 @@ async function logContentChange(collection: string, operation: string, docId: st
   console.log(`   Document ID: ${docId}`);
   console.log(`   Timestamp: ${new Date().toISOString()}`);
   console.log('━'.repeat(60));
-  console.log('💡 Frontend will rebuild automatically via Git push');
+
+  // Get deploy hook URL from environment
+  const deployHookUrl = process.env.DEPLOY_HOOK_URL;
+
+  if (!deployHookUrl) {
+    console.log('⚠️  DEPLOY_HOOK_URL not configured - skipping rebuild');
+    return;
+  }
+
+  try {
+    console.log('🚀 Triggering frontend rebuild...');
+
+    const response = await fetch(deployHookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      console.log('✅ Frontend rebuild triggered successfully!');
+      console.log('   Your changes will be live in ~2-3 minutes');
+    } else {
+      console.error(`❌ Failed to trigger rebuild: ${response.status} ${response.statusText}`);
+    }
+  } catch (error: any) {
+    console.error('❌ Error triggering rebuild:', error.message);
+  }
+
   console.log('━'.repeat(60));
 }
 
 /**
- * Collection hook: Log changes after create/update
+ * Collection hook: Trigger rebuild after create/update
  */
 export const afterChangeHook: CollectionAfterChangeHook = async ({
   doc,
@@ -49,31 +77,31 @@ export const afterChangeHook: CollectionAfterChangeHook = async ({
   const operationLabel = operation === 'create' ? 'created' : 'updated';
   const docId = doc.id || doc.slug || doc.name || 'unknown';
 
-  // Log content change (non-blocking)
-  logContentChange(collection.slug, operationLabel, docId).catch((error) => {
-    console.error('Error logging content change:', error);
+  // Trigger rebuild (non-blocking)
+  triggerFrontendRebuild(collection.slug, operationLabel, docId).catch((error) => {
+    console.error('Error triggering rebuild:', error);
   });
 
   return doc;
 };
 
 /**
- * Global hook: Log changes after global update
+ * Global hook: Trigger rebuild after global update
  */
 export const afterChangeGlobalHook: GlobalAfterChangeHook = async ({
   doc,
   global,
 }) => {
-  // Log content change (non-blocking)
-  logContentChange(global.slug, 'updated', 'global').catch((error) => {
-    console.error('Error logging content change:', error);
+  // Trigger rebuild (non-blocking)
+  triggerFrontendRebuild(global.slug, 'updated', 'global').catch((error) => {
+    console.error('Error triggering rebuild:', error);
   });
 
   return doc;
 };
 
 /**
- * After delete hook: Log changes when content is deleted
+ * After delete hook: Trigger rebuild when content is deleted
  */
 export const afterDeleteHook: CollectionAfterDeleteHook = async ({
   doc,
@@ -83,9 +111,9 @@ export const afterDeleteHook: CollectionAfterDeleteHook = async ({
 }) => {
   const docId = id || doc?.slug || doc?.name || 'unknown';
 
-  // Log content change (non-blocking)
-  logContentChange(collection.slug, 'deleted', String(docId)).catch((error) => {
-    console.error('Error logging content change:', error);
+  // Trigger rebuild (non-blocking)
+  triggerFrontendRebuild(collection.slug, 'deleted', String(docId)).catch((error) => {
+    console.error('Error triggering rebuild:', error);
   });
 
   return doc;
