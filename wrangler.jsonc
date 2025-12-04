@@ -1,0 +1,78 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "hivconnect-backend",
+  "account_id": "77936f7f1fecd5df8504adaf96fad1fb",
+  "compatibility_date": "2024-12-02",
+  "compatibility_flags": [
+    // Enable Node.js API
+    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#nodejs-compatibility-flag
+    "nodejs_compat",
+    // Allow to fetch URLs in your app
+    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
+    "global_fetch_strictly_public",
+    // Enable MessagePort/MessageChannel for React 19/Next.js 15
+    // Required for PayloadCMS compatibility with Workers runtime
+    "expose_global_message_channel",
+    // Enable WeakRef and FinalizationRegistry
+    // Required for PayloadCMS v3 with Next.js 15
+    "enable_weak_ref",
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "d1_databases": [
+    {
+      "binding": "D1",
+      "database_id": "4dc8866a-3444-46b8-b73a-4def21b45772",
+      "database_name": "hivconnect-db-production",
+      "remote": true,
+    },
+  ],
+  "services": [
+    // The service should match the "name" of your worker
+    // {
+    //   "binding": "WORKER_SELF_REFERENCE",
+    //   "service": "my-app"
+    // },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "hivconnect-media-production",
+    },
+    // Create a R2 binding with the binding name "NEXT_INC_CACHE_R2_BUCKET"
+    // {
+    //   "binding": "NEXT_INC_CACHE_R2_BUCKET",
+    //   "bucket_name": "<BUCKET_NAME>",
+    // },
+  ],
+  "vars": {
+    "PAYLOAD_PUBLIC_SERVER_URL": "https://hivconnect-backend.shuffle-seo.workers.dev"
+  },
+
+  // Staging environment - deploy with: CLOUDFLARE_ENV=staging pnpm run deploy
+  "env": {
+    "staging": {
+      "name": "hivconnect-backend-staging",
+      "d1_databases": [
+        {
+          "binding": "D1",
+          "database_id": "fc9ab010-f7bc-4dc2-8030-1438bb49a8cc",
+          "database_name": "hivconnect-db-staging",
+          "remote": true
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "R2",
+          "bucket_name": "hivconnect-media-staging"
+        }
+      ],
+      "vars": {
+        "PAYLOAD_PUBLIC_SERVER_URL": "https://hivconnect-backend-staging.shuffle-seo.workers.dev"
+      }
+    }
+  }
+}
