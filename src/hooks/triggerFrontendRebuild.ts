@@ -86,8 +86,8 @@ export const afterChangeHook: CollectionAfterChangeHook = async ({
   const operationLabel = operation === 'create' ? 'created' : 'updated';
   const docId = doc.id || doc.slug || doc.name || 'unknown';
 
-  // Trigger rebuild (non-blocking)
-  triggerFrontendRebuild(collection.slug, operationLabel, docId).catch((error) => {
+  // Trigger rebuild (must await to ensure webhook completes before Worker terminates)
+  await triggerFrontendRebuild(collection.slug, operationLabel, docId).catch((error) => {
     console.error('Error triggering rebuild:', error);
   });
 
@@ -101,8 +101,8 @@ export const afterChangeGlobalHook: GlobalAfterChangeHook = async ({
   doc,
   global,
 }) => {
-  // Trigger rebuild (non-blocking)
-  triggerFrontendRebuild(global.slug, 'updated', 'global').catch((error) => {
+  // Trigger rebuild (must await to ensure webhook completes before Worker terminates)
+  await triggerFrontendRebuild(global.slug, 'updated', 'global').catch((error) => {
     console.error('Error triggering rebuild:', error);
   });
 
@@ -120,8 +120,8 @@ export const afterDeleteHook: CollectionAfterDeleteHook = async ({
 }) => {
   const docId = id || doc?.slug || doc?.name || 'unknown';
 
-  // Trigger rebuild (non-blocking)
-  triggerFrontendRebuild(collection.slug, 'deleted', String(docId)).catch((error) => {
+  // Trigger rebuild (must await to ensure webhook completes before Worker terminates)
+  await triggerFrontendRebuild(collection.slug, 'deleted', String(docId)).catch((error) => {
     console.error('Error triggering rebuild:', error);
   });
 
